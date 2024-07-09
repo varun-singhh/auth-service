@@ -20,11 +20,22 @@ func (a *auth) Get(ctx *gofr.Context, user *models.User) (*models.User, error) {
 	var (
 		respUser models.User
 		query    string
+		params   []interface{}
 	)
 
-	query = `SELECT id, email, phone, password, permissions, status, created_at FROM users WHERE (id=$1 OR email=$2 OR phone = $3) AND permissions=$4`
+	if user.Phone != "" && user.Email != "" {
+		query = `SELECT id, email, phone, password, permissions, status, created_at FROM users WHERE (id=$1 OR (email=$2 AND phone=$3)) AND permissions=$4`
+		params = append(params, user.ID, user.Email, user.Phone, user.Permission)
 
-	err := ctx.DB().QueryRow(query, user.ID, user.Email, user.Phone, user.Permission).Scan(&respUser.ID, &respUser.Email, &respUser.Phone, &respUser.Password, &respUser.Permission, &respUser.Status, &respUser.CreatedAt)
+	} else if user.Phone == "" {
+		query = `SELECT id, email, phone, password, permissions, status, created_at FROM users WHERE (id=$1 OR email=$2) AND permissions=$3`
+		params = append(params, user.ID, user.Email, user.Permission)
+	} else if user.Email == "" {
+		query = `SELECT id, email, phone, password, permissions, status, created_at FROM users WHERE (id=$1 OR phone=$2) AND permissions=$3`
+		params = append(params, user.ID, user.Phone, user.Permission)
+	}
+
+	err := ctx.DB().QueryRow(query, params...).Scan(&respUser.ID, &respUser.Email, &respUser.Phone, &respUser.Password, &respUser.Permission, &respUser.Status, &respUser.CreatedAt)
 	if err == sql.ErrNoRows {
 		return nil, &errors.EntityNotFound{
 			Entity: user.Permission,

@@ -41,7 +41,7 @@ func (a *auth) Login(ctx *gofr.Context, requestUser *models.User) (*models.Autho
 		}
 	}
 
-	tokenString, err := generateJWT(user.Email, user.Password, strconv.Itoa(user.ID))
+	tokenString, err := generateJWT(user.Email, user.Password, strconv.Itoa(user.ID), user.Permission)
 
 	return &models.AuthorizedResponse{User: user, Token: tokenString, Message: "user logged in successfully"}, nil
 }
@@ -75,7 +75,12 @@ func (a *auth) Signup(ctx *gofr.Context, requestUser *models.User) (*models.Auth
 		return nil, err
 	}
 
-	return &models.AuthorizedResponse{User: user, Token: "", Message: "user created successfully, please verify your registered email"}, nil
+	res, err := a.GenerateSignupVerificationCode(ctx, user.Email)
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.AuthorizedResponse{User: user, Token: "", Message: "user created successfully, please verify your registered email", Data: res}, nil
 }
 
 func (a *auth) RefreshToken(ctx *gofr.Context, signedToken string) (*models.AuthorizedResponse, error) {
@@ -85,24 +90,31 @@ func (a *auth) RefreshToken(ctx *gofr.Context, signedToken string) (*models.Auth
 		return nil, err
 	}
 
-	tokenString, err := generateJWT(claims.Email, claims.Password, claims.UserID)
-
-	err = sendEmail(ctx, []string{"varunsingh00712@gmail.com"}, nil, nil, email.EmailData{EmailType: email.PasswordReset, DataMap: map[string]string{"code": tokenString, "user": "varun singh"}})
-	if err != nil {
-		ctx.Logger.Errorf("failed to send mail, err: %v", err)
-	}
+	tokenString, err := generateJWT(claims.Email, claims.Password, claims.UserID, claims.Permission)
 
 	return &models.AuthorizedResponse{Token: tokenString, Message: "token refreshed successfully"}, nil
 }
 
 func (a *auth) ValidateToken(ctx *gofr.Context, signedToken string) (bool, error) {
 
-	claims, err := validateToken(signedToken)
+	authzResp, err := a.RefreshToken(ctx, signedToken)
+	if err != nil {
+		return false, err
+	}
+
+	claims, err := validateToken(authzResp.Token)
 	if err != nil {
 		return false, err
 	}
 
 	if claims.UserID != "" {
+		id, _ := strconv.Atoi(claims.UserID)
+
+		_, err = a.authStore.Get(ctx, &models.User{ID: id, Permission: claims.Permission})
+		if err != nil {
+			return false, err
+		}
+
 		return true, nil
 	}
 
@@ -165,15 +177,8 @@ func (a *auth) ResetPassword(ctx *gofr.Context, permission, newPassword, token s
 	return "password reset successfully", nil
 }
 
-func (a *auth) VerifyAccount(ctx *gofr.Context, code, permission, token string) (interface{}, error) {
-	claims, err := validateToken(token)
-	if err != nil {
-		return nil, err
-	}
-
-	id, _ := strconv.Atoi(claims.Id)
-
-	user, err := a.authStore.Get(ctx, &models.User{Email: claims.Email, ID: id, Permission: permission})
+func (a *auth) VerifyAccount(ctx *gofr.Context, code, permission, email string) (interface{}, error) {
+	user, err := a.authStore.Get(ctx, &models.User{Email: email, Permission: permission})
 	if err != nil {
 		return nil, err
 	}
@@ -184,17 +189,9 @@ func (a *auth) VerifyAccount(ctx *gofr.Context, code, permission, token string) 
 		}, nil
 	}
 
-	if user.Password != claims.Password {
-		return nil, &errors.Response{
-			StatusCode: 400,
-			Code:       "400",
-			Reason:     "invalid token, user not authorized to perform action",
-		}
-	}
-
 	status := "PENDING"
 
-	isVerified, err := verifyCode(ctx, code, user.Email)
+	isVerified, err := verifyCode(ctx, code, email)
 	if err != nil {
 		return nil, err
 	}
@@ -218,12 +215,12 @@ func (a *auth) GenerateSignupVerificationCode(ctx *gofr.Context, mail string) (i
 
 	code, err := generateCode(ctx, mail)
 
-	err = sendEmail(ctx, []string{"varunsingh00712@gmail.com"}, nil, nil, email.EmailData{EmailType: email.VerificationCode, DataMap: map[string]string{"code": code, "user": "varun singh"}})
+	err = sendEmail(ctx, []string{mail}, nil, nil, email.EmailData{EmailType: email.VerificationCode, DataMap: map[string]string{"code": code, "user": "varun singh"}})
 	if err != nil {
 		ctx.Logger.Errorf("failed to send mail for verification code, err: %v", err)
 	}
 
 	return types.Response{
-		Data: "new code sent to registered email",
+		Data: "verification code sent to registered email",
 	}, nil
 }

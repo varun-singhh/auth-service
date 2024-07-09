@@ -1,9 +1,10 @@
 package models
 
 type AuthorizedResponse struct {
-	User    *User  `json:"user,omitempty"`
-	Message string `json:"message"`
-	Token   string `json:"token,omitempty"`
+	User    *User       `json:"user,omitempty"`
+	Message string      `json:"message"`
+	Token   string      `json:"token,omitempty"`
+	Data    interface{} `json:"data,omitempty"`
 }
 
 type ErrorResponse struct {

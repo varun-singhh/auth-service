@@ -12,6 +12,6 @@ type Authorizer interface {
 	ValidateToken(ctx *gofr.Context, signedToken string) (bool, error)
 	ForgotPassword(ctx *gofr.Context, email, permission string) (interface{}, error)
 	ResetPassword(ctx *gofr.Context, permission, newPassword, token string) (string, error)
-	VerifyAccount(ctx *gofr.Context, code, permission, token string) (interface{}, error)
+	VerifyAccount(ctx *gofr.Context, code, permission, email string) (interface{}, error)
 	GenerateSignupVerificationCode(ctx *gofr.Context, email string) (interface{}, error)
 }

@@ -111,9 +111,10 @@ func (h *handler) VerifyAccount(ctx *gofr.Context) (interface{}, error) {
 		return nil, errors.InvalidParam{Param: []string{"json request body"}}
 	}
 
-	token := ctx.PathParam("token")
+	q := ctx.Request().URL.Query()
+	email := q.Get("email")
 
-	res, err := h.authService.VerifyAccount(ctx, input.Code, input.Permission, token)
+	res, err := h.authService.VerifyAccount(ctx, input.Code, input.Permission, email)
 	if err != nil {
 		return nil, err
 	}

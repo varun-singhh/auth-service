@@ -21,14 +21,14 @@ func main() {
 	// handler setup
 	httpHandler := httpLayer.New(authSvc)
 
-	app.POST("/login", httpHandler.Login)
-	app.POST("/signup", httpHandler.Signup)
-	app.GET("/code", httpHandler.GenerateSignupVerificationCode)
-	app.POST("/reset-password", httpHandler.ResetPassword)
-	app.POST("/forgot-password", httpHandler.ForgotPassword)
-	app.POST("/validate/{token}", httpHandler.ValidateToken)
-	app.POST("/verify/{token}", httpHandler.VerifyAccount)
-	app.GET("/refresh-token/{token}", httpHandler.RefreshToken)
+	app.POST("/api/login", httpHandler.Login)
+	app.POST("/api/signup", httpHandler.Signup)
+	app.GET("/api/code", httpHandler.GenerateSignupVerificationCode)
+	app.POST("/api/reset-password", httpHandler.ResetPassword)
+	app.POST("/api/forgot-password", httpHandler.ForgotPassword)
+	app.GET("/api/validate/{token}", httpHandler.ValidateToken)
+	app.POST("/api/verify", httpHandler.VerifyAccount)
+	app.GET("/api/refresh-token/{token}", httpHandler.RefreshToken)
 
 	app.Start()
 }

@@ -17,9 +17,10 @@ import (
 )
 
 type JWTClaim struct {
-	Email    string
-	Password string
-	UserID   string
+	Email      string
+	Password   string
+	UserID     string
+	Permission string
 	jwt.StandardClaims
 }
 
@@ -43,12 +44,13 @@ func checkPassword(userPassword, providedPassword string) error {
 	return nil
 }
 
-func generateJWT(email, password, id string) (tokenString string, err error) {
+func generateJWT(email, password, id, permission string) (tokenString string, err error) {
 	expirationTime := time.Now().Add(2 * time.Hour)
 	claims := &JWTClaim{
-		Email:    email,
-		Password: password,
-		UserID:   id,
+		Email:      email,
+		Password:   password,
+		UserID:     id,
+		Permission: permission,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: expirationTime.Unix(),
 		},
